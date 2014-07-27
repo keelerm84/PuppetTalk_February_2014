@@ -1,0 +1,9 @@
+body > div.reveal:after {
+  content: 'irc: #devict';
+  font-style: normal;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+}
+
+.reveal pre { width: 100%; box-shadow: 0 0 0 rgba(0, 0, 0, 0); }

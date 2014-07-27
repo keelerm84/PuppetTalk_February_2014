@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Provisioning With Puppet: For the Manipulator In All Of Us</title>
+
+    <meta name="description" content="When working on a project, there is likely a lot of infrastructure required. Various services and tools need to be installed and properly configured, code needs to be checked out and placed into the appropriate location, and a myriad of other minor tweaks need performed.  Doing this by hand is both error prone and time consuming!">
+    <meta name="author" content="Matthew M. Keeler">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="lib/reveal.js/css/reveal.min.css">
+    <link rel="stylesheet" href="lib/reveal.js/css/theme/beige.css" id="theme">
+
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/reveal.js/lib/css/zenburn.css">
+
+    <link rel="stylesheet" href="css/upfront.css">
+
+    <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+    <script>
+      document.write( '<link rel="stylesheet" href="lib/reveal.js/css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="reveal">
+      <!-- Any section element inside of this container is displayed as a slide -->
+      <div class="slides">
+        <!-- A markdown document can provide part of or the the entire presentation -->
+        <!-- With this setup three blank links separate slides. Two blanks separate nested "vertical" slides -->
+        <section data-markdown="content.md" data-separator="^\n\n\n"
+        data-vertical="^\n\n"></section>
+
+        <section>
+          <h2>What is Puppet</h2>
+          <blockquote>
+            Puppet is IT automation software that helps system administrators
+            manage infrastructure throughout its lifecycle, from provisioning
+            and configuration to orchestration and reporting
+          </blockquote>
+          <cite>http://puppetlabs.com/puppet/what-is-puppet</cite>
+        </section>
+
+        <section>
+          <h2>Terminology</h2>
+          <ul>
+            <li>
+              <strong>Manifest</strong> ::
+              A puppet configuration file that defines the steps required for a
+              server to be configured.
+            </li>
+            <li>
+              <strong>Catalog</strong> ::
+              Puppet will compile all the manifests into a catalog.  This
+              catalog is only valid for a single node, and does not contain any
+              ambiguous logic.
+            </li>
+            <li>
+              <strong>Resource</strong> ::
+              A description of some aspect of a system.  This may encompass a
+              file that needs to exist, a service that must be running, or some
+              software that must be installed.
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <section>
+            <h2>Resources</h2>
+            <ul>
+              <li>
+                Each resource has a type, a title, and one or more attributes.  The basic outline for a resource is
+              </li>
+            </ul>
+            <pre>
+              <code>
+                type { 'title':
+                attribute => value,
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Type</h2>
+            <ul>
+              <li>
+                The type identifies the kind of resource we are working with.
+                You can find the list of types
+                <a href="http://docs.puppetlabs.com/references/latest/type.html">http://docs.puppetlabs.com/references/latest/type.html</a>
+              </li>
+              <li>
+                You can define your own types by creating them in Puppet's
+                native language, or by writing special Ruby classes
+              </li>
+              <li>
+                <strong>Examples include:</strong>
+                exec, mount, service, user
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Title</h2>
+            <ul>
+              <li>
+                A title is a way of identifying a resource to the Puppet
+                compiler.  It must be unique across the same resource types,
+                but you can have a service and a package named the same.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Attributes and Parameters</h2>
+            <ul>
+              <li>
+                A resource is configured through the use of attribute /
+                parameter pairs.
+              </li>
+              <li>
+                Most resources will have a few key, or required attributes, and
+                likely quite a few optional ones.
+              </li>
+              <li>
+                <strong>Examples include:</strong> user, command, path
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h1>Special Attributes</h1>
+          </section>
+
+          <section>
+            <h2>Namevar</h2>
+            <ul>
+              <li>
+                Most types have an attribute which identifies a resource on the
+                target system, which is referred to as the namevar or name.  This
+                name is what the system will use to identify a package or service
+                (like httpd or git)
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Why Do We Need This?</h2>
+            <ul>
+              <li>
+                An example would be defining one resource that targets multiple
+                operating systems.
+              </li>
+              <li>
+                For example, Apache is referred to as httpd on Fedora but apache2
+                on Ubuntu.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Ensure</h2>
+            <ul>
+              <li>
+                Many types have some concept of an ensure attribute.
+              </li>
+              <li>
+                Which values it accepts is dependent on the resource type, but
+                common values would include present, absent, running, stopped,
+                installed, etc.
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h1>Basic File Resource</h1>
+          </section>
+
+          <section>
+            <h2>Single File Resource</h2>
+            <pre>
+              <code>
+                file { '/home/vagrant/required-file':
+                  ensure => present,
+                  owner => 'vagrant',
+                  group => 'root',
+                  mode => '0755'
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Multiple File Resources</h2>
+            <pre>
+              <code>
+                # Inline array, same attributes
+                file { ['/opt', '/bin', '/usr/local/', '/tmp']:
+                  ensure => directory,
+                  owner => 'root',
+                  group => 'wheel',
+                  mode => 0755
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <pre>
+              <code>
+                # Array variable, same attributes
+                $directories = ['/opt',
+                                '/bin',
+                                '/usr/local/',
+                                '/tmp']
+
+                file { $directories:
+                  ensure => directory,
+                  owner => 'root',
+                  group => 'wheel',
+                  mode => 0755
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Same Resource Type, Different Attributes</h2>
+            <pre>
+              <code>
+                file {
+                  '/opt':
+                    ensure => directory,
+                    owner => 'root',
+                    group => 'root';
+
+                  '/bin/':
+                    ensure => directory,
+                    owner => 'root',
+                    group => 'wheel';
+
+                  '/etc/passwd':
+                    ensure => file,
+                    owner => 'root',
+                    mode => '0644';
+                }
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h1>Resource Relationships</h1>
+          </section>
+
+          <section>
+          <ul>
+            <li>
+              The order which resources are written in your manifest doesn't mean anything because puppet is declarative, not procedural.
+            </li>
+            <li>
+              The declarative nature of puppet means we talk about how the
+              system state should exist.  So by default, resources aren't
+              associated with each other.
+            </li>
+            <li>
+              Unfortunately, resources do rely on other resources.  And puppet
+              provides for this through the use of metaparameters.
+            </li>
+          </ul>
+          </section>
+
+          <section>
+            <h2>Metaparameters</h2>
+            <ul>
+              <li>
+                <strong>before</strong> :: Apply this resource before some other resource.
+              </li>
+              <li>
+                <strong>require</strong> :: Apply this resource after some other resource.
+              </li>
+              <li>
+                <strong>notify</strong> :: Apply this resource before some other resource.  The target resource will refresh if the notifying resource has changed.
+              </li>
+              <li>
+                <strong>subscribe</strong> :: Apply this resource after some other resource.  The subscriber will refresh if the target resource has changed.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Before / Require</h2>
+            <pre>
+              <code>
+                # NOTE: Only one is required.  You don't have to specify both
+                package { 'openssh-server':
+                  ensure => present,
+                  before => File['/etc/ssh/sshd_config'],
+                }
+
+                file { '/etc/ssh/sshd_config':
+                  ensure  => file,
+                  mode    => 600,
+                  source  => 'puppet:///modules/sshd/sshd_config',
+                  require => Package['openssh-server'],
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Subscribe / Notify</h2>
+            <pre>
+              <code>
+                file { '/etc/ssh/sshd_config':
+                  ensure => file,
+                  mode   => 600,
+                  source => 'puppet:///modules/sshd/sshd_config',
+                  notify => Service['sshd'],
+                }
+                service { 'sshd':
+                  ensure    => running,
+                  enable    => true,
+                  subscribe => File['/etc/ssh/sshd_config'],
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Chaining Arrows</h2>
+            <ul>
+              <li>
+                Puppet provides a shorthand for declaring dependencies.  These
+                are known as chaining arrows.
+              </li>
+              <li><strong>-></strong> :: Requires the resource on the left to be applied before the one on the right</li>
+              <li><strong>~></strong> :: Requires the resource on the left to be applied first, and it will send a refresh event to the resource on the right if the left resource changes</li>
+            </ul>
+          </section>
+
+          <section>
+            <pre>
+              <code>
+                file { '/etc/ssh/sshd_config':
+                 ensure => file,
+                 mode   => 600,
+                 source => 'puppet:///modules/sshd/sshd_config',
+                } ~>
+                service { 'sshd':
+                  ensure    => running,
+                  enable    => true,
+                }
+              </code>
+            </pre>
+          </section>
+
+        </section>
+
+        <section>
+          <section>
+            <h1>Variables</h1>
+          </section>
+
+          <section>
+            <ul>
+              <li>
+                Like most programming languages, puppet supports the concept of
+                variables.
+              </li>
+              <li>
+                Variables can contain the results of expressions, functions and
+                other variables.
+              </li>
+              <li>
+                They can be used anywhere the value type of the variable would
+                be valid.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Example</h2>
+            <pre>
+              <code>
+                $content = 'Here is some content that I will use later'
+
+                file { '/home/keelerm/example',
+                  ensure => file,
+                  content => $content
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Interpolation</h2>
+            <ul>
+              <li>
+                Variables can be interpolated much like bash or other languages
+              </li>
+              <li>
+                You can just reference the variable directly in a string.
+              </li>
+              <li>
+                If the word boundary isn't clear, you can wrap the variable in curly braces.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <pre>
+              <code>
+                $name = "Matthew"
+                $greeting = "Hello $name Keeler"
+
+                $name = "Matthew "
+                $greeting = "Hello ${name}Keeler"
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Appending to Variables</h2>
+            <ul>
+              <li>
+                You can append to a variable by using the += operator.
+              </li>
+              <li>
+                Both the left and right hand sides must be of the same type.
+              </li>
+              <li>
+                You cannot modify a variable within the same scope.  Once
+                assigned, the variable is static within that scope.
+              </li>
+              <li>
+                While resource declaration order doesn't matter, variable order
+                does.  So no forward references!
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <pre>
+              <code>
+                # This would generate an error
+                $content = "Testing"
+                $content += " generating an error"
+
+                # This is perfectly fine
+                $content = "Testing"
+
+                class example {
+                  $content += " that everything works"
+                }
+              </code>
+            </pre>
+          </section>
+
+        </section>
+
+        <section>
+          <section>
+            <h1>Conditionals</h1>
+            <p>Puppet supports a variety of conditional operators -- if, unless, case and selectors</p>
+          </section>
+
+          <section>
+            <h2>If</h2>
+            <pre>
+              <code>
+                if $operatingsystem == "Fedora" {
+                  # optionally do some specific specific thing
+                }
+                # Note the missing 'e' here
+                elsif $operationsystem == "Darwin"
+                {
+                  # optionally do something specific for mac
+                }
+                else {
+                  warn("We are going to throw a warning here")
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Regex Capture Variables</h2>
+            <ul>
+              <li>
+                You can use regexs in your conditions.  Any matched group will be
+                available in the condition block
+              </li>
+              <li>
+                Each matched group is numbered, starting from $1.  The entire
+                match is stored in $0.
+              </li>
+            </ul>
+            <pre>
+              <code>
+                if $ip =~ /^(\d+\).*/ {
+                  notice('The first part of your IP is $1')
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Unless</h2>
+            <p>A convenient way of expressing if not</p>
+            <pre>
+              <code>
+                unless $operatingsystem == "Darwin" {
+                  # Do something if we aren't running a Mac
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Case</h2>
+            <pre>
+              <code>
+                case $operatingsystem {
+                  # You can use regex here
+                  /^(Fedora|CentOS)$/': { ... }
+                  'Darwin': { ... }
+                  default: { ... }
+                }
+
+                # Comma separated list of options
+                case $operatingsystem {
+                  /^(Fedora|CentOS)$/', 'Darwin' : { ... }
+                  default: { ... }
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Selectors</h2>
+            <ul>
+              <li>These are like case statements, except that instead of executing a block code, they return a value.</li>
+              <li>Unlike cases, you can't use a comma separated list of values.  You either need multiple entries, or you must use a regex.</li>
+            </ul>
+            <pre>
+              <code>
+                $apacheName = $operatingsystem ? {
+                  'Fedora' => 'httpd',
+                  'Ubuntu' => 'apache2',
+                  default => 'apache'
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Operators and Order of Precedence</h2>
+            <ol>
+              <li>! (not)</li>
+              <li>in # 'Darwin' in ['Fedora', 'Darwin', 'Ubuntu']</li>
+              <li>* and / (multiplication and division)</li>
+              <li>- and + (addition and subtraction)</li>
+              <li><< and >> (left shift and right shift)</li>
+              <li>== and != (equal and not equal)</li>
+              <li>>=, <=, >, and < (greater or equal, less or equal, greater than, and less than)</li>
+              <li>and</li>
+              <li>or</li>
+            </ol>
+          </section>
+
+        </section>
+
+        <!-- @TODO Add something about functions here? -->
+
+        <section>
+
+          <section>
+            <h1>Classes</h1>
+          </section>
+          <section>
+            <ul>
+              <li>
+                Classes are just defined blocks of puppet statements.
+              </li>
+              <li>
+                They aren't executed until they are explicitly called.
+              </li>
+              <li>
+                They are typically used to wrap related functionality.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <pre>
+              <code>
+# A class with parameters
+class apache ($version = 'latest')  # apache is the name of the class.
+                                     # $version is a parameter scoped to the
+                                     # class with a default value of latest (
+                                     # could be any puppet data type ).
+                                     # Multiple parameters should be separated
+                                     # by a comma
+
+# We could optionally specify inherits class name to inherit functionality
+# from an existing class.
+{
+  package {'httpd':
+    ensure => $version, # Using the class parameter from above
+    before => File['/etc/httpd.conf'],
+  }
+  file {'/etc/httpd.conf':
+    ensure  => file,
+    owner   => 'httpd',
+    content => template('apache/httpd.conf.erb'), # Template from a module
+  }
+  service {'httpd':
+    ensure => running,
+    enable => true,
+    subscribe => File['/etc/httpd.conf'],
+  }
+}
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Parameters</h2>
+            <ul>
+              <li>These are ways for classes to request external data</li>
+              <li>If not defined with a default value, the calling code must specify the values</li>
+              <li>Otherwise, you can specify them to override the defaults, or omit them to rely on the defined defaults.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Overriding Resource Attributes</h2>
+            <ul>
+              <li>You can override a resource's attribute by using a reference to the resource.</li>
+              <li>undef is a special keyword that allows you to remove a resource's attribute</li>
+              <li>You can append to a resource's attribute by using +> instead of =></li>
+            </ul>
+            <pre>
+              <code>
+                class base::freebsd inherits base::unix {
+                  File['/etc/passwd'] {
+                    group => 'wheel'
+                  }
+                  File['/etc/shadow'] {
+                    group => undef
+                  }
+                }
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Include-like vs Resource-like</h2>
+            <ul>
+              <li>The include function is the standard way to invoke a class</li>
+              <li>You can include a class multiple times; puppet will ensure it is only ever added once.</li>
+              <li>include accepts a single class, comma separated list, or an array of class names</li>
+            </ul>
+            <pre>
+              <code>
+                include namespace::classname
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Require</h2>
+            <ul>
+              <li>require declares one or more classes, but then causes them to become a dependency of the parent container</li>
+              <li>require accepts a single class, comma separated list, or an array of class names</li>
+            </ul>
+            <pre>
+              <code>
+                define apache::vhost ($port, $docroot, $servername, $vhost_name) {
+                  require apache
+                  # Every resource of apache is handled before any
+                  # apache::vhost instance
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Contain</h2>
+            <ul>
+              <li>Contain is used to declare a class from within another class</li>
+              <li>Any before / require relationship on the containing class will be applied before / after the contained class</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Resource-like</h2>
+            <ul>
+              <li>These types of declarations look like they are declaring classes</li>
+              <li>This method allows us to override a classes parameters</li>
+            </ul>
+            <pre>
+              <code>
+                class { 'apache':
+                  version => '2.2.21'
+                }
+
+                # We are including the base::linux class, specifying no parameters.  Either it
+                # doesn't require them, or they all have defaults.
+                class { 'base::linux': }
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h1>Custom Resource Types</h1>
+          </section>
+
+          <section>
+            <ul>
+              <li>Defined resources are just chunks of code that can be evaluated multiple times.</li>
+              <li>Once you have defined a type, they behave like a new resource type</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Defining a Type</h2>
+            <ul>
+              <li>
+                Much like a class, any code in the body of the type isn't
+                automatically executed.  You must use an instance of that type.
+              </li>
+            </ul>
+            <pre>
+              <code>
+                define myName ($parameter1, $parameter2 = "Default Value" )
+                # The parameter list is optional
+                {
+                  # Any puppet code can go here
+                }
+              </code>
+            </pre>
+          </section>
+
+          <section>
+            <h2>Declaring a Type</h2>
+            <ul>
+              <li>Declaring the type is just like declaring any other resource</li>
+            </ul>
+            <pre>
+              <code>
+                myName { 'myChoiceOfLabel':
+                  parameter1 => "Setting My Value"
+                  # We don't specify parameter2, so it uses the default value given in the type
+                  # definition
+                }
+              </code>
+            </pre>
+          </section>
+        </section>
+
+        <section>
+          <h1>Demo</h1>
+        </section>
+
+        <section>
+          <h1>Additional Resources</h1>
+          <ul>
+            <li><a href="http://docs.puppetlabs.com/">http://docs.puppetlabs.com/</a></li>
+            <li><a href="https://puphpet.com/">https://puphpet.com/</a></li>
+            <li><a href="https://github.com/puppletlabs">https://github.com/puppletlabs</a></li>
+            <li><a href="https://github.com/example42">https://github.com/example42</a></li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="lib/reveal.js/lib/js/head.min.js"></script>
+    <script src="lib/reveal.js/js/reveal.min.js"></script>
+
+    <script>
+
+      // Full list of configuration options available here:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+        transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+        // Optional libraries used to extend on reveal.js
+        dependencies: [
+          { src: 'lib/reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'lib/reveal.js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'lib/reveal.js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'lib/reveal.js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'lib/reveal.js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+          { src: 'lib/reveal.js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>
